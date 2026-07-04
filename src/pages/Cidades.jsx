@@ -4,61 +4,81 @@ import { cidadeService } from '../services/api';
 export default function Cidades() {
   const [cidades, setCidades] = useState([]);
   const [nome, setNome] = useState('');
+  const [idEmEdicao, setIdEmEdicao] = useState(null); // NOVO: Controla a edição
 
-  useEffect(() => { 
-    carregarCidades(); 
-  }, []);
+  useEffect(() => { carregarCidades(); }, []);
 
   const carregarCidades = async () => {
     try {
       const response = await cidadeService.listar();
-      console.log("Dados recebidos de Cidades:", response.data); // Vai nos mostrar se a lista chegou!
-      
-      if (response.data) {
-        setCidades(response.data);
-      }
-    } catch (error) {
-      console.error("Erro ao buscar cidades:", error);
-    }
+      if (response.data) setCidades(response.data);
+    } catch (error) { console.error("Erro ao buscar", error); }
   };
 
-  const cadastrar = async () => {
-    if (!nome) return alert("Preencha o nome!");
+  const salvar = async () => {
+    if (!nome) return alert("Preencha o nome da cidade!");
     try {
-      await cidadeService.criar({ nome });
+      if (idEmEdicao) {
+        await cidadeService.atualizar(idEmEdicao, { nome });
+        alert("Cidade atualizada com sucesso!");
+      } else {
+        await cidadeService.criar({ nome });
+        alert("Cidade cadastrada com sucesso!");
+      }
       setNome('');
-      carregarCidades(); // Atualiza a lista na mesma hora
-      alert("Cidade cadastrada com sucesso!");
-    } catch (error) {
-      alert("Erro ao cadastrar cidade.");
-      console.error(error);
+      setIdEmEdicao(null);
+      carregarCidades(); 
+    } catch (error) { console.error("Erro ao salvar", error); }
+  };
+
+  const prepararEdicao = (cidade) => {
+    setNome(cidade.nome);
+    setIdEmEdicao(cidade.id);
+  };
+
+  const excluir = async (id) => {
+    if (window.confirm("Tem certeza que deseja excluir esta cidade?")) {
+      try {
+        await cidadeService.excluir(id);
+        carregarCidades();
+      } catch (error) { console.error("Erro ao excluir", error); }
     }
   };
 
   return (
-    <div>
-      <h2>Gestão de Cidades</h2>
-      <div style={{ marginBottom: '20px', border: '1px solid var(--border)', padding: '20px', borderRadius: '10px' }}>
+    <div className="pagina-cadastro">
+      <h1 className="titulo-pagina">Gestão de Cidades</h1>
+      
+      <div className="form-box">
         <input 
           type="text" 
           placeholder="Nome da Cidade" 
-          value={nome} 
+          className="input-elegante"
+          value={nome}
           onChange={(e) => setNome(e.target.value)} 
-          style={{ marginRight: '10px', padding: '5px' }} 
         />
-        <button onClick={cadastrar} className="counter">Cadastrar</button>
-      </div>
-      
-      <h3>Cidades Cadastradas</h3>
-      <ul>
-        {cidades.length === 0 ? (
-          <p>Nenhuma cidade aparecendo ainda...</p>
-        ) : (
-          cidades.map((cid) => (
-            <li key={cid.id}>{cid.nome}</li>
-          ))
+        <button onClick={salvar} className="btn-cadastrar">
+          {idEmEdicao ? "Atualizar" : "Cadastrar"}
+        </button>
+        {idEmEdicao && (
+          <button onClick={() => { setNome(''); setIdEmEdicao(null); }} className="btn-excluir" style={{marginLeft: '10px'}}>
+            Cancelar
+          </button>
         )}
-      </ul>
+      </div>
+
+      <h2 style={{ color: '#aaa', marginBottom: '20px' }}>Cidades Cadastradas</h2>
+      <div className="lista-grid">
+        {cidades.map(cidade => (
+          <div key={cidade.id} className="cartao-item">
+            <p><strong>🗺️ Cidade:</strong> {cidade.nome}</p>
+            <div className="botoes-acao">
+              <button className="btn-editar" onClick={() => prepararEdicao(cidade)}>Editar</button>
+              <button className="btn-excluir" onClick={() => excluir(cidade.id)}>Excluir</button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

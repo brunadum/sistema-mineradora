@@ -4,7 +4,7 @@ import { servicoService } from '../services/api';
 export default function Servicos() {
   const [servicos, setServicos] = useState([]);
   const [descricao, setDescricao] = useState('');
-  const [valor, setValor] = useState('');
+  const [idEmEdicao, setIdEmEdicao] = useState(null);
 
   useEffect(() => { carregarServicos(); }, []);
 
@@ -12,37 +12,73 @@ export default function Servicos() {
     try {
       const response = await servicoService.listar();
       if (response.data) setServicos(response.data);
-    } catch (error) {
-      console.error("Erro ao buscar", error);
-    }
+    } catch (error) { console.error("Erro ao buscar", error); }
   };
 
-  const cadastrar = async () => {
-    if (!descricao || !valor) return alert("Preencha todos os campos!");
+  const salvar = async () => {
+    if (!descricao) return alert("Preencha a descrição!");
     try {
-      await servicoService.criar({ descricao, valor });
-      setDescricao(''); 
-      setValor('');
-      carregarServicos();
-      alert("Serviço cadastrado com sucesso!");
-    } catch (error) {
-      alert("Erro ao cadastrar serviço.");
-      console.error(error);
+      if (idEmEdicao) {
+        await servicoService.atualizar(idEmEdicao, { descricao });
+        alert("Serviço atualizado com sucesso!");
+      } else {
+        await servicoService.criar({ descricao });
+        alert("Serviço cadastrado com sucesso!");
+      }
+      setDescricao('');
+      setIdEmEdicao(null);
+      carregarServicos(); 
+    } catch (error) { console.error("Erro ao salvar", error); }
+  };
+
+  const prepararEdicao = (serv) => {
+    setDescricao(serv.descricao);
+    setIdEmEdicao(serv.id);
+  };
+
+  const excluir = async (id) => {
+    if (window.confirm("Tem certeza que deseja excluir este serviço?")) {
+      try {
+        await servicoService.excluir(id);
+        carregarServicos();
+      } catch (error) { console.error("Erro ao excluir", error); }
     }
   };
 
   return (
-    <div>
-      <h2>Gestão de Serviços</h2>
-      <div style={{ marginBottom: '20px', border: '1px solid var(--border)', padding: '20px', borderRadius: '10px' }}>
-        <input type="text" placeholder="Descrição do Serviço" value={descricao} onChange={(e) => setDescricao(e.target.value)} style={{ marginRight: '10px', padding: '5px' }} />
-        <input type="number" placeholder="Valor (R$)" value={valor} onChange={(e) => setValor(e.target.value)} style={{ marginRight: '10px', padding: '5px' }} />
-        <button onClick={cadastrar} className="counter">Cadastrar</button>
+    <div className="pagina-cadastro">
+      <h1 className="titulo-pagina">Gestão de Serviços</h1>
+      
+      <div className="form-box">
+        <input 
+          type="text" 
+          placeholder="Descrição do Serviço" 
+          className="input-elegante"
+          value={descricao}
+          onChange={(e) => setDescricao(e.target.value)} 
+        />
+        <button onClick={salvar} className="btn-cadastrar">
+          {idEmEdicao ? "Atualizar" : "Cadastrar"}
+        </button>
+        {idEmEdicao && (
+          <button onClick={() => { setDescricao(''); setIdEmEdicao(null); }} className="btn-excluir" style={{marginLeft: '10px'}}>
+            Cancelar
+          </button>
+        )}
       </div>
-      <h3>Serviços Cadastrados</h3>
-      <ul>
-        {servicos.map(srv => <li key={srv.id}>{srv.descricao} - R$ {srv.valor}</li>)}
-      </ul>
+
+      <h2 style={{ color: '#aaa', marginBottom: '20px' }}>Serviços Cadastrados</h2>
+      <div className="lista-grid">
+        {servicos.map(serv => (
+          <div key={serv.id} className="cartao-item">
+            <p><strong>⚙️ Serviço:</strong> {serv.descricao}</p>
+            <div className="botoes-acao">
+              <button className="btn-editar" onClick={() => prepararEdicao(serv)}>Editar</button>
+              <button className="btn-excluir" onClick={() => excluir(serv.id)}>Excluir</button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
